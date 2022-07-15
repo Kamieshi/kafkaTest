@@ -49,16 +49,16 @@ func TestProducer_SendMessages(t *testing.T) {
 }
 
 func TestHighLoad(t *testing.T) {
-	//countMessagesInSeccond := 20
-	//timePause := 1000000 / countMessagesInSeccond
+	countMessagesInSeccond := 2000
+	timePause := float32(10000000) / float32(countMessagesInSeccond)
 	countSendMessage := 0
-	countMessageInPack := 10
+	countMessageInPack := 1
 	messPack := make([]models.Message, countMessageInPack)
 	messFromKafka := make([]kafka.Message, countMessageInPack)
 	checkTime := time.Now().Add(1 * time.Second)
 	countInsecond := 0
-	for {
 
+	for {
 		for i, _ := range messPack {
 			messPack[i] = models.Message{ID: uuid.New(), PayLoad: fmt.Sprintf("Mesage :%d", countSendMessage+i)}
 			dataTempBuffer, err := json.Marshal(messPack[i])
@@ -76,11 +76,12 @@ func TestHighLoad(t *testing.T) {
 		}
 		if time.Now().After(checkTime) {
 			checkTime = time.Now().Add(1 * time.Second)
-			fmt.Printf("Count in seccond : %d", countInsecond)
-			fmt.Println(countInsecond)
+			fmt.Printf("Count in seccond : %d\n", countInsecond)
 			countInsecond = 0
-
 		}
-		time.Sleep(500 * time.Millisecond)
+		if countInsecond > countMessagesInSeccond {
+			time.Sleep(time.Duration(timePause) * time.Microsecond)
+		}
+
 	}
 }
