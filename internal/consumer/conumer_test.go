@@ -6,14 +6,15 @@ import (
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/rs/zerolog/log"
 	"os"
 	"testing"
-	"time"
 )
 
-var consumerEasyInstance *EasyReader
+var consumerEasyInstance *SimpleReader
 var ctx = context.Background()
 var repMessage repository.MessageRepository
+var consStream *StreamConsumer
 
 func TestMain(m *testing.M) {
 
@@ -28,13 +29,16 @@ func TestMain(m *testing.M) {
 		panic(fmt.Errorf("repository.MainTest poolconnection: %v", err))
 	}
 	repMessage = repository.NewMessageRepositoryPostgres(pool)
-	consumerEasyInstance = NewReader(&repMessage, []string{"127.0.0.1:9092"}, "test_group", "test_topic")
+	consumerEasyInstance = NewSimpleReader(&repMessage, []string{"127.0.0.1:9092"}, "test_group", "test_topic")
+
+	consStream, err = NewStreamConsumer("127.0.0.1:9092", "test_topic", 0, 0)
+	if err != nil {
+		log.Fatal().Err(err)
+	}
 	code := m.Run()
 	os.Exit(code)
 }
 
-func TestEasyReader_ListenMessageAndWriteToDB(t *testing.T) {
-	go consumerEasyInstance.ListenMessageAndWriteToDB(ctx)
-	go consumerEasyInstance.ListenMessageAndWriteToDB(ctx)
-	time.Sleep(5 * time.Minute)
+func TestEasyReader_SingleListenMessageAndWriteToDB(t *testing.T) {
+	consumerEasyInstance.ListenMessageAndWriteToDB(ctx)
 }

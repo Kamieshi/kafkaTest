@@ -11,7 +11,7 @@ type config struct {
 }
 
 func GetConfig() (*config, error) {
-	err := godotenv.Load("/home/dmitryrusack/Work/KafkaWriterReader/.env")
+	err := godotenv.Load("../../.env")
 	if err != nil {
 		return nil, fmt.Errorf("conf.GetConfig: %v", err)
 	}

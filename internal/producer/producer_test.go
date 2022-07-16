@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 	var err error
 	prod, err = NewProducer("127.0.0.1:9092", "test_topic", 0)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 	defer prod.conn.Close()
 	code := m.Run()
@@ -49,7 +49,7 @@ func TestProducer_SendMessages(t *testing.T) {
 }
 
 func TestHighLoad(t *testing.T) {
-	countMessagesInSeccond := 2000
+	countMessagesInSeccond := 10000
 	timePause := float32(10000000) / float32(countMessagesInSeccond)
 	countSendMessage := 0
 	countMessageInPack := 1
