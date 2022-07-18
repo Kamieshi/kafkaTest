@@ -64,6 +64,44 @@ func NewStreamConsumer(brokerAddr, topic string, partition int, offset int64) (*
 	}, err
 }
 
+func GetAddrPartitions(ctx context.Context, brokerAddr, topic string) ([]*StreamConsumer, error) {
+	conn, err := kafka.Dial("tcp", brokerAddr)
+	if err != nil {
+		return nil, fmt.Errorf("consumerStream.go/GetAddrPartitions Make first connection with cluster:%v", err)
+	}
+
+	leadBroker, err := conn.Controller()
+	if err != nil {
+		return nil, fmt.Errorf("consumerStream.go/GetAddrPartitions Get Lead broker:%v", err)
+	}
+
+	conn, err = kafka.Dial("tcp", fmt.Sprintf("%s:%d", leadBroker.Host, leadBroker.Port))
+	if err != nil {
+		return nil, fmt.Errorf("consumerStream.go/GetAddrPartitions Make connection to leader broker:%v", err)
+	}
+	topicPartitions, err := conn.ReadPartitions(topic)
+	if err != nil {
+		return nil, fmt.Errorf("consumerStream.go/GetAddrPartitions Get all partition for topic %s :%v", topic, err)
+	}
+	if topicPartitions == nil {
+		return nil, fmt.Errorf("consumerStream.go/GetAddrPartitions Topic %s not found in cluster :%v", topic, err)
+	}
+	consumers := make([]*StreamConsumer, 0, len(topicPartitions))
+
+	for _, partition := range topicPartitions {
+		//TODO asd
+		conToPartition, err := kafka.DialLeader(ctx, "tcp", fmt.Sprintf("%s:%d", partition.Leader.Host, partition.Leader.Port), partition.Topic, partition.ID)
+		consumers = append(consumers, &StreamConsumer{
+			hostPort:  "",
+			topic:     "",
+			partition: 0,
+			Conn:      nil,
+			batch:     nil,
+		})
+	}
+	return nil, nil
+}
+
 func (s *StreamConsumer) ReInitBatch(newOffset int64) error {
 
 	s.batch.Close()
