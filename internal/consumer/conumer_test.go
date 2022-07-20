@@ -1,14 +1,15 @@
 package consumer
 
 import (
-	"KafkaWriterReader/internal/conf"
-	"KafkaWriterReader/internal/repository"
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/rs/zerolog/log"
 	"os"
 	"testing"
+
+	"github.com/jackc/pgx/v4/pgxpool"
+
+	"KafkaWriterReader/internal/conf"
+	"KafkaWriterReader/internal/repository"
 )
 
 var consumerEasyInstance *SimpleReader
@@ -31,10 +32,6 @@ func TestMain(m *testing.M) {
 	repMessage = repository.NewMessageRepositoryPostgres(pool)
 	consumerEasyInstance = NewSimpleReader(&repMessage, []string{"127.0.0.1:9092"}, "test_group", "test_topic")
 
-	consStream, err = NewStreamConsumer("127.0.0.1:9092", "test_topic", 0, 0)
-	if err != nil {
-		log.Fatal().Err(err)
-	}
 	code := m.Run()
 	os.Exit(code)
 }

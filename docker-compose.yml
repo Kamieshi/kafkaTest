@@ -44,7 +44,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
       KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka0:29092,PLAINTEXT_HOST://localhost:9092"
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "3"
 
   kafka1:
     image: confluentinc/cp-kafka:5.5.1
@@ -54,7 +54,7 @@ services:
     links:
       - zookeeper
     ports:
-      - 9093:9092
+      - 9093:9093
     environment:
       KAFKA_BROKER_ID: "1"
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
@@ -62,7 +62,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
       KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka1:29092,PLAINTEXT_HOST://localhost:9093"
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "3"
 
   kafka2:
     image: confluentinc/cp-kafka:5.5.1
@@ -72,7 +72,7 @@ services:
     links:
       - zookeeper
     ports:
-      - 9094:9092
+      - 9094:9094
     environment:
       KAFKA_BROKER_ID: "2"
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
@@ -87,7 +87,6 @@ services:
     container_name: kafka-ui
     ports:
       - "8080:8080"
-
     environment:
       KAFKA_CLUSTERS_0_NAME: "local"
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka0:29092,kafka1:29092,kafka2:29092"

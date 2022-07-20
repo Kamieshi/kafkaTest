@@ -1,17 +1,17 @@
 package consumer
 
 import (
-	"KafkaWriterReader/internal/models"
-	"KafkaWriterReader/internal/repository"
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/jackc/pgx/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/segmentio/kafka-go"
-	"net"
-	"strconv"
-	"time"
+
+	"KafkaWriterReader/internal/models"
+	"KafkaWriterReader/internal/repository"
 )
 
 type StreamConsumer struct {
@@ -23,19 +23,10 @@ type StreamConsumer struct {
 }
 
 func NewStreamConsumer(brokerAddr, topic string, partition int, offset int64) (*StreamConsumer, error) {
-	conn, err := kafka.Dial("tcp", brokerAddr)
-	if err != nil {
-		return nil, fmt.Errorf("producer.go/NewStreamConsumer Error First connection %v:", err)
-	}
-	controller, err := conn.Controller()
-	if err != nil {
-		return nil, fmt.Errorf("producer.go/NewStreamConsumer Error get controller %v:", err)
-	}
-
 	connTopicPart, err := kafka.DialLeader(
 		context.Background(),
 		"tcp",
-		net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)),
+		brokerAddr,
 		topic,
 		partition,
 	)
@@ -46,12 +37,11 @@ func NewStreamConsumer(brokerAddr, topic string, partition int, offset int64) (*
 	if err != nil {
 		return nil, fmt.Errorf("producer.go/NewStreamConsumer Error Set Offset: %v", err)
 	}
-
-	connTopicPart.SetReadDeadline(time.Now().Add(1 * time.Minute))
+	connTopicPart.SetReadDeadline(time.Now().Add(20 * time.Second))
 	batch := connTopicPart.ReadBatchWith(kafka.ReadBatchConfig{
 		MinBytes:       2e3,
 		MaxBytes:       2e6,
-		IsolationLevel: kafka.IsolationLevel(0),
+		IsolationLevel: kafka.IsolationLevel(1),
 		MaxWait:        1 * time.Minute,
 	})
 
@@ -64,42 +54,25 @@ func NewStreamConsumer(brokerAddr, topic string, partition int, offset int64) (*
 	}, err
 }
 
-func GetAddrPartitions(ctx context.Context, brokerAddr, topic string) ([]*StreamConsumer, error) {
+func GetStreamConsumers(ctx context.Context, brokerAddr, topic string) ([]*StreamConsumer, error) {
 	conn, err := kafka.Dial("tcp", brokerAddr)
 	if err != nil {
 		return nil, fmt.Errorf("consumerStream.go/GetAddrPartitions Make first connection with cluster:%v", err)
 	}
-
-	leadBroker, err := conn.Controller()
-	if err != nil {
-		return nil, fmt.Errorf("consumerStream.go/GetAddrPartitions Get Lead broker:%v", err)
-	}
-
-	conn, err = kafka.Dial("tcp", fmt.Sprintf("%s:%d", leadBroker.Host, leadBroker.Port))
-	if err != nil {
-		return nil, fmt.Errorf("consumerStream.go/GetAddrPartitions Make connection to leader broker:%v", err)
-	}
-	topicPartitions, err := conn.ReadPartitions(topic)
+	topicPartitions, err := conn.ReadPartitions("test_topic")
 	if err != nil {
 		return nil, fmt.Errorf("consumerStream.go/GetAddrPartitions Get all partition for topic %s :%v", topic, err)
 	}
-	if topicPartitions == nil {
-		return nil, fmt.Errorf("consumerStream.go/GetAddrPartitions Topic %s not found in cluster :%v", topic, err)
-	}
-	consumers := make([]*StreamConsumer, 0, len(topicPartitions))
+	var streamConsumers = make([]*StreamConsumer, 0, len(topicPartitions))
 
-	for _, partition := range topicPartitions {
-		//TODO asd
-		conToPartition, err := kafka.DialLeader(ctx, "tcp", fmt.Sprintf("%s:%d", partition.Leader.Host, partition.Leader.Port), partition.Topic, partition.ID)
-		consumers = append(consumers, &StreamConsumer{
-			hostPort:  "",
-			topic:     "",
-			partition: 0,
-			Conn:      nil,
-			batch:     nil,
-		})
+	for _, part := range topicPartitions {
+		strCons, errN := NewStreamConsumer(fmt.Sprintf("%s:%d", part.Leader.Host, part.Leader.Port), topic, part.ID, 0)
+		if errN != nil {
+			continue
+		}
+		streamConsumers = append(streamConsumers, strCons)
 	}
-	return nil, nil
+	return streamConsumers, nil
 }
 
 func (s *StreamConsumer) ReInitBatch(newOffset int64) error {
@@ -137,7 +110,7 @@ func (s *StreamConsumer) ListenAndWriteToRep(ctx context.Context, rep repository
 			break
 		}
 		bt.Queue("INSERT INTO messages(id,pay_load) values ($1,$2)", mess.ID, mess.PayLoad)
-		if bt.Len() > 100 {
+		if bt.Len() > 20 {
 			err := rep.BatchQuery(ctx, &bt)
 			if err != nil {
 				log.Info().Err(err)

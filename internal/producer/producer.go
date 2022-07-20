@@ -3,9 +3,8 @@ package producer
 import (
 	"context"
 	"fmt"
+
 	"github.com/segmentio/kafka-go"
-	"net"
-	"strconv"
 )
 
 type producer struct {
@@ -13,20 +12,11 @@ type producer struct {
 }
 
 func NewProducer(brokerAddr, topic string, partition int) (*producer, error) {
-	conn, err := kafka.Dial("tcp", brokerAddr)
-	if err != nil {
-		return nil, fmt.Errorf("producer.go/NewProducer Error First connection %v:", err)
-	}
-	defer conn.Close()
-	controller, err := conn.Controller()
-	if err != nil {
-		return nil, fmt.Errorf("producer.go/NewProducer Error get controller %v:", err)
-	}
 
 	connTopicPart, err := kafka.DialLeader(
 		context.Background(),
 		"tcp",
-		net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)),
+		brokerAddr,
 		topic,
 		partition,
 	)
